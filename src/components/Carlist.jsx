@@ -2,6 +2,11 @@ import React, { Component } from 'react';
 import {SERVER_URL} from '../constants.js';
 import ReactTable from "react-table-6";
 import 'react-table-6/react-table.css';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import AddCar from './AddCar.jsx';
+import EditCar from './EditCar.jsx';
+import { CSVLink } from 'react-csv';
 
 class Carlist extends Component {
     constructor(props) {
@@ -24,10 +29,62 @@ class Carlist extends Component {
         .catch(err => console.error(err));
     }
 
+    AddCar(car) {
+        fetch(SERVER_URL + 'api/cars', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(car)
+        })
+        .then(res => {
+            toast.success("Car saved", {
+                position: toast.POSITION.BOTTOM_LEFT
+            });
+            this.fetchCars();
+        })
+        .catch(err => toast.error("Error when saving", {
+            position: toast.POSITION.BOTTOM_LEFT
+        }))
+    }
+
+    updateCar(car, link) {
+        fetch(link, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(car)
+        })
+        .then(res => {
+            toast.success("Change saved", {
+                position: toast.POSITION.BOTTOM_LEFT
+            });
+            this.fetchCars();
+        })
+        .catch(err =>
+            toast.error("Error when saving", {
+                position: toast.POSITION.BOTTOM_LEFT
+            })
+        )
+    }
+
     onDelClick = (link) => {
-        fetch(link, {method: 'DELETE'})
-        .then(res => this.fetchCars())
-        .then(err => console.error(err))
+        if (window.confirm('Are you sure to delete?')) {
+            fetch(link, {method: 'DELETE'})
+            .then(res => {
+                toast.success("Car deleted", {
+                    position: toast.POSITION.BOTTOM_LEFT
+                });
+                this.fetchCars();
+            })
+            .catch(err => {
+                toast.error("Error when deleting", {
+                    position: toast.POSITION.BOTTOM_LEFT
+                });
+                console.error(err)
+            })
+        }
     }
 
     render() {
@@ -47,7 +104,12 @@ class Carlist extends Component {
             Header: 'Price €',
             accessor: 'price'
         },{
-            id: 'delbutton',
+            sortable: false,
+            filterable: false,
+            width: 100,
+            accessor: '_links.self.href',
+            Cell: ({value, row}) => (<EditCar car={row} link={value} updateCar={this.updateCar} fetchCars={this.fetchCars} />),
+        },{
             sortable: false,
             filterable: false,
             width: 100,
@@ -56,7 +118,10 @@ class Carlist extends Component {
         }]
         return (
             <div className="App">
+                <AddCar addCar={this.AddCar} fetchCars={this.fetchCars} />
+                <CSVLink data={this.state.cars} separator=";">Export CSV</CSVLink>
                 <ReactTable data={this.state.cars} columns={columns} filterable={true} />
+                <ToastContainer autoClose={1500} />
             </div>
         );
     }
